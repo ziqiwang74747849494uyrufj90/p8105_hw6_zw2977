@@ -1,0 +1,107 @@
+---
+title: "p8105_hw6_zw2977"
+author: "Ziqi Wang"
+date: "2023-12-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+```{r}
+
+install.packages("rnoaa")
+library(rnoaa)
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(ggplot2)
+```
+
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2022-01-01",
+    date_max = "2022-12-31") |>
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) |>
+  select(name, id, everything())
+
+
+
+```
+
+
+
+```{r}
+data1 <- weather_df |> 
+  modelr::bootstrap(n = 5000) |> 
+  mutate(
+    models = map(strap, \(df) lm(tmax ~ tmin + prcp -1, data = df) ),
+    results = map(models, broom::tidy),
+    results2 = map(models, broom::glance))
+ 
+ 
+data2 <- data1 |> 
+   select(-strap, -models, -results2) |> 
+   unnest(results) |> 
+   select(.id, term, estimate) |> 
+   filter(term %in% c("tmin", "prcp")) |>
+   pivot_wider(names_from = term,
+               values_from = estimate) |>
+   mutate(logb1b2 = log(tmin*prcp)) |>
+   select(logb1b2)
+ 
+data3 <- data1 |> 
+   select(-strap, -models, -results) |> 
+   unnest(results2) |>
+   select(r.squared)
+ 
+data4 <- bind_cols(data2, data3)
+```
+
+
+```{r}
+
+quantile(data4$logb1b2, c(0.025, 0.975))
+quantile(data4$r.squared, c(0.025, 0.975))
+
+ggplot(data4, aes(x = logb1b2)) +
+  geom_density()
+
+ggplot(data4, aes(x = r.squared)) +
+  geom_density()
+
+```
+
+
+
+
+
+
