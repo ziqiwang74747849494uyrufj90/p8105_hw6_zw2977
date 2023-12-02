@@ -32,7 +32,7 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 
 ```{r}
 
-install.packages("rnoaa")
+
 library(rnoaa)
 library(dplyr)
 library(purrr)
@@ -40,6 +40,8 @@ library(tidyr)
 library(ggplot2)
 ```
 
+
+Problem 2
 ```{r}
 weather_df = 
   rnoaa::meteo_pull_monitors(
@@ -100,7 +102,7 @@ ggplot(data4, aes(x = r.squared)) +
 
 ```
 
-
+The density plot depicts the distribution of log(b1*b2), The most value is located around -3.5. The distribution is slightly left skewed. The density plot of r2 seems that the values are normal distributed with mean at 0.91.  
 
 
 
