@@ -32,12 +32,15 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 
 ```{r}
 
-
 library(rnoaa)
 library(dplyr)
 library(purrr)
 library(tidyr)
 library(ggplot2)
+library(gtsummary)
+library(modelr)
+library(forcats)
+
 ```
 
 
@@ -106,4 +109,90 @@ The density plot depicts the distribution of log(b1*b2), The most value is locat
 
 
 
+Problem 3
+
+```{r}
+dat <- read.csv("birthweight.csv")
+```
+
+```{r}
+dat.1 <- dat %>% 
+         mutate(babysex = factor(babysex, levels = c(1,2), labels = c("male", "female")),
+                frace = factor(frace, levels = c(1,2,3,4,8,9), labels = c("White", "Black", "Asian", "Puerto Rican", "Other", "Unknown")),
+                malform = factor(malform, levels = c(0, 1), labels = c("absent", "present")),
+                mrace = factor(mrace, levels = c(1,2,3,4,8), labels = c("White", "Black", "Asian", "Puerto Rican", "Other")))
+
+dat.2 <- dat.1 %>% na.omit()
+
+```
+
+
+```{r}
+
+  tbl_uvregression(
+    dat.2,
+    method = lm,
+    y = bwt
+  )
+
+```
+
+
+
+```{r}
+fit <- lm(bwt ~ babysex + blength + delwt, data = dat.2)
+summary(fit)
+```
+I use the single linear regression on baby birth weight with all the predictors. We finally select baby’s sex, baby’s length at birth and 
+mother’s weight at delivery (pounds), which we think that would be most relevant for the prediction in the multiple linear regression.  
+
+```{r}
+dat.2 %>%
+modelr::add_residuals(fit) %>%
+modelr::add_predictions(fit) %>%
+ggplot(., aes(x=pred, y =resid)) +
+  geom_point()
+
+```
+
+
+```{r}
+fit2 <- lm(bwt ~ blength + gaweeks, data = dat.2)
+fit3 <- lm(bwt ~ bhead*babysex*blength, data = dat.2)
+summary(fit3)
+
+```
+
+
+```{r}
+cv.dat.2 =
+  crossv_mc(dat.2, 100) |> 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble))
+
+cv.dat.2 = 
+  cv.dat.2 |> 
+  mutate(
+    fit1  = map(train, \(df) lm(bwt ~ babysex + blength + delwt, data = df)),
+    fit2  = map(train, \(df) lm(bwt ~ blength + gaweeks, data = df)),
+    fit3  = map(train, \(df) lm(bwt ~ bhead*babysex*blength, data = df))) |> 
+  mutate(
+    rmse_fit1 = map2_dbl(fit1, test, \(mod, df) rmse(model = mod, data = df)),
+    rmse_fit2 = map2_dbl(fit2, test, \(mod, df) rmse(model = mod, data = df)),
+    rmse_fit3 = map2_dbl(fit3, test, \(mod, df) rmse(model = mod, data = df)))
+
+cv.dat.2 |> 
+  select(starts_with("rmse")) |> 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_") |> 
+  mutate(model = fct_inorder(model)) |> 
+  ggplot(aes(x = model, y = rmse)) + 
+  geom_violin()
+
+
+```
 
