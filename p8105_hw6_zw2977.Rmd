@@ -133,7 +133,7 @@ dat.2 <- dat.1 %>% na.omit()
     dat.2,
     method = lm,
     y = bwt
-  )
+  )%>% as_kable()
 
 ```
 
